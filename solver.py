@@ -7,6 +7,8 @@ import time
 import numpy as np
 import torch
 
+from tqdm import tqdm
+
 from pit_criterion import cal_loss
 
 class TransformerOptimizer(object):
@@ -236,9 +238,11 @@ class Solver(object):
             vis_window_epoch = None
             vis_iters = torch.arange(1, len(data_loader) + 1)
             vis_iters_loss = torch.Tensor(len(data_loader))
-
+            
+        pbar = tqdm(total=len(data_loader), unit='batches', bar_format='{l_bar}{bar:25}{r_bar}{bar:-10b}', colour="YELLOW", dynamic_ncols=True)
         for i, (data) in enumerate(data_loader):
             padded_mixture, mixture_lengths, padded_source = data
+            pbar.update(1)
             if self.use_cuda:
                 padded_mixture = padded_mixture.cuda()
                 mixture_lengths = mixture_lengths.cuda()
@@ -254,13 +258,14 @@ class Solver(object):
                 self.optimizer.step(epoch)
 
             total_loss += loss.item()
-
-            if i % self.print_freq == 0:
-                print('Epoch {0} | Iter {1} | Average Loss {2:.3f} | '
-                      'Current Loss {3:.6f} | {4:.1f} ms/batch'.format(
-                          epoch + 1, i + 1, total_loss / (i + 1),
-                          loss.item(), 1000 * (time.time() - start) / (i + 1)),
-                      flush=True)
+            dict_loss = {'Current Loss': loss.item()}
+            pbar.set_postfix(dict_loss)
+            # if i % self.print_freq == 0:
+            #     print('Epoch {0} | Iter {1} | Average Loss {2:.3f} | '
+            #           'Current Loss {3:.6f} | {4:.1f} ms/batch'.format(
+            #               epoch + 1, i + 1, total_loss / (i + 1),
+            #               loss.item(), 1000 * (time.time() - start) / (i + 1)),
+            #           flush=True)
 
             # visualizing loss using visdom
             if self.visdom_epoch and not cross_valid:
@@ -274,5 +279,5 @@ class Solver(object):
                     else:
                         self.vis.line(X=x_axis, Y=y_axis, win=vis_window_epoch,
                                       update='replace')
-
+        pbar.close()
         return total_loss / (i + 1)

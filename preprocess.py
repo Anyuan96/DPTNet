@@ -8,17 +8,22 @@ import os
 
 import librosa
 
+from tqdm import tqdm
+
 
 def preprocess_one_dir(in_dir, out_dir, out_filename, sample_rate=8000):
     file_infos = []
     in_dir = os.path.abspath(in_dir)
     wav_list = os.listdir(in_dir)
+    pbar = tqdm(total=len(wav_list), unit='files', bar_format='{l_bar}{bar:25}{r_bar}{bar:-10b}', colour="YELLOW", dynamic_ncols=True)
     for wav_file in wav_list:
+        pbar.update(1)
         if not wav_file.endswith('.wav'):
             continue
         wav_path = os.path.join(in_dir, wav_file)
         samples, _ = librosa.load(wav_path, sr=sample_rate)
         file_infos.append((wav_path, len(samples)))
+    pbar.close()
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     with open(os.path.join(out_dir, out_filename + '.json'), 'w') as f:
@@ -26,7 +31,7 @@ def preprocess_one_dir(in_dir, out_dir, out_filename, sample_rate=8000):
 
 
 def preprocess(args):
-    for data_type in ['tr', 'cv', 'tt']:
+    for data_type in ['test', 'val', 'test']:
         for speaker in ['mix', 's1', 's2']:
             preprocess_one_dir(os.path.join(args.in_dir, data_type, speaker),
                                os.path.join(args.out_dir, data_type),
